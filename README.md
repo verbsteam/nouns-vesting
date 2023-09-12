@@ -1,66 +1,17 @@
-## Foundry
+# Noun Vesting
 
-**Foundry is a blazing fast, portable and modular toolkit for Ethereum application development written in Rust.**
+A helper contract for Nouns DAO to transfer Nouns to partners and community members, with the following requirements:
 
-Foundry consists of:
+Nouns sender (Nouns DAO) can:
 
--   **Forge**: Ethereum testing framework (like Truffle, Hardhat and DappTools).
--   **Cast**: Swiss army knife for interacting with EVM smart contracts, sending transactions and getting chain data.
--   **Anvil**: Local Ethereum node, akin to Ganache, Hardhat Network.
--   **Chisel**: Fast, utilitarian, and verbose solidity REPL.
+- Set a vesting end timestamp.
+- Set a claiming period end timestamp, afterwhich if recipient hasn't claimed their tokens, the DAO can withdraw them.
+- Set a price per token the recipient needs to pay to claim their Nouns.
+- Lock any vesting contract such that no more Nouns can be sent to it.
+- Nouns DAO can clawback Nouns until the vesting end timestamp ???
 
-## Documentation
+Recipient can:
 
-https://book.getfoundry.sh/
-
-## Usage
-
-### Build
-
-```shell
-$ forge build
-```
-
-### Test
-
-```shell
-$ forge test
-```
-
-### Format
-
-```shell
-$ forge fmt
-```
-
-### Gas Snapshots
-
-```shell
-$ forge snapshot
-```
-
-### Anvil
-
-```shell
-$ anvil
-```
-
-### Deploy
-
-```shell
-$ forge script script/Counter.s.sol:CounterScript --rpc-url <your_rpc_url> --private-key <your_private_key>
-```
-
-### Cast
-
-```shell
-$ cast <subcommand>
-```
-
-### Help
-
-```shell
-$ forge --help
-$ anvil --help
-$ cast --help
-```
+- Delegate the Nouns held in this contract to any Ethereum address they like, as soon as they are sent to this contract.
+- Buy the tokens held in this contract, at the price per token set by the sender, until the claiming period end timestamp.
+- Lock their vesting contract such that no more Nouns can be sent to it.

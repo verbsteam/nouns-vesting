@@ -21,6 +21,7 @@ contract NounVesting is IERC721Receiver {
      * ░░░░░░░░░░░░░░░░░░░░░░░░░░░░░
      */
 
+    error ClaimingPeriodTooShort();
     error OnlySenderOrRecipient();
     error OnlyRecipient();
     error OnlySender();
@@ -28,6 +29,7 @@ contract NounVesting is IERC721Receiver {
     error OnlyNounsToken();
     error InsufficientETH();
     error VestingNotDone();
+    error ClaimingHasNotExpiredYet();
 
     /**
      * ░░░░░░░░░░░░░░░░░░░░░░░░░░░░░
@@ -36,9 +38,16 @@ contract NounVesting is IERC721Receiver {
      */
 
     event NounReceived(address operator, address from, uint256 tokenId, bytes data);
-    event NounsBought(address transferTo, uint256[] tokenIds, uint256 ethReceived);
+    event NounsBought(address transferTo, uint256[] tokenIds, uint256 ethReceived, address ethRecipient, bool ethSentToRecipient);
     event ETHWithdrawn(address to, uint256 amount, bool sent);
     event StoppedAcceptingNFTs();
+
+    /**
+     * ░░░░░░░░░░░░░░░░░░░░░░░░░░░░░
+     *   CONSTANTS
+     * ░░░░░░░░░░░░░░░░░░░░░░░░░░░░░
+     */
+    uint256 public constant MIN_CLAIMING_PERIOD = 30 days;
 
     /**
      * ░░░░░░░░░░░░░░░░░░░░░░░░░░░░░
@@ -50,7 +59,9 @@ contract NounVesting is IERC721Receiver {
     address public sender;
     address public recipient;
     uint256 public vestingEndTimestamp;
+    uint256 public claimExpirationTimestamp;
     uint256 public pricePerToken;
+    address public ethRecipient;
     bool public acceptingNFTs;
     uint256[] public receivedNFTs;
 
@@ -66,14 +77,20 @@ contract NounVesting is IERC721Receiver {
         address sender_,
         address recipient_,
         uint256 vestingEndTimestamp_,
+        uint256 claimExpirationTimestamp_,
         uint256 pricePerToken_,
+        address ethRecipient_,
         address delegate_
     ) {
+        if (claimExpirationTimestamp_ - vestingEndTimestamp_ < MIN_CLAIMING_PERIOD) revert ClaimingPeriodTooShort();
+
         nounsToken = nounsToken_;
         sender = sender_;
         recipient = recipient_;
         vestingEndTimestamp = vestingEndTimestamp_;
+        claimExpirationTimestamp = claimExpirationTimestamp_;
         pricePerToken = pricePerToken_;
+        ethRecipient = ethRecipient_;
         acceptingNFTs = true;
 
         if (delegate_ != address(0)) {
@@ -128,7 +145,11 @@ contract NounVesting is IERC721Receiver {
             nounsToken_.safeTransferFrom(address(this), transferTo, receivedNFTs_[i]);
         }
 
-        emit NounsBought(transferTo, receivedNFTs_, msg.value);
+        address ethRecipient_ = ethRecipient;
+        uint256 value = address(this).balance;
+        (bool sent, ) = ethRecipient_.call{ value: value }('');
+
+        emit NounsBought(transferTo, receivedNFTs_, msg.value, ethRecipient_, sent);
     }
 
     /**
@@ -137,6 +158,9 @@ contract NounVesting is IERC721Receiver {
      * ░░░░░░░░░░░░░░░░░░░░░░░░░░░░░
      */
 
+    /***
+     * @dev A safety function in case the ETH auto sending fails.
+     */
     function withdrawETH(address to) external {
         if (msg.sender != sender) revert OnlySender();
 
@@ -144,6 +168,18 @@ contract NounVesting is IERC721Receiver {
         (bool sent, ) = to.call{ value: value }('');
 
         emit ETHWithdrawn(to, value, sent);
+    }
+
+    function withdrawNFTs(address to) external {
+        if (msg.sender != sender) revert OnlySender();
+        if (block.timestamp < claimExpirationTimestamp) revert ClaimingHasNotExpiredYet();
+
+        NounsTokenMinimal nounsToken_ = nounsToken;
+        uint256[] memory receivedNFTs_ = receivedNFTs;
+
+        for (uint256 i = 0; i < receivedNFTs_.length; i++) {
+            nounsToken_.safeTransferFrom(address(this), to, receivedNFTs_[i]);
+        }
     }
 
     function stopAcceptingNFTs() external onlySenderOrRecipient {
