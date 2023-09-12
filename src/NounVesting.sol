@@ -2,19 +2,16 @@
 
 pragma solidity ^0.8.19;
 
-import { IERC721Receiver } from 'openzeppelin-contracts/interfaces/IERC721Receiver.sol';
+import { IERC721Receiver } from "openzeppelin-contracts/interfaces/IERC721Receiver.sol";
+import { Initializable } from "openzeppelin-contracts/proxy/utils/Initializable.sol";
 
 interface NounsTokenMinimal {
     function delegate(address delegatee) external;
 
-    function safeTransferFrom(
-        address from,
-        address to,
-        uint256 tokenId
-    ) external;
+    function safeTransferFrom(address from, address to, uint256 tokenId) external;
 }
 
-contract NounVesting is IERC721Receiver {
+contract NounVesting is IERC721Receiver, Initializable {
     /**
      * ░░░░░░░░░░░░░░░░░░░░░░░░░░░░░
      *   ERRORS
@@ -38,7 +35,13 @@ contract NounVesting is IERC721Receiver {
      */
 
     event NounReceived(address operator, address from, uint256 tokenId, bytes data);
-    event NounsBought(address transferTo, uint256[] tokenIds, uint256 ethReceived, address ethRecipient, bool ethSentToRecipient);
+    event NounsBought(
+        address transferTo,
+        uint256[] tokenIds,
+        uint256 ethReceived,
+        address ethRecipient,
+        bool ethSentToRecipient
+    );
     event ETHWithdrawn(address to, uint256 amount, bool sent);
     event StoppedAcceptingNFTs();
 
@@ -72,8 +75,7 @@ contract NounVesting is IERC721Receiver {
         _;
     }
 
-    constructor(
-        NounsTokenMinimal nounsToken_,
+    function initialize(
         address sender_,
         address recipient_,
         uint256 vestingEndTimestamp_,
@@ -81,10 +83,11 @@ contract NounVesting is IERC721Receiver {
         uint256 pricePerToken_,
         address ethRecipient_,
         address delegate_
-    ) {
-        if (claimExpirationTimestamp_ - vestingEndTimestamp_ < MIN_CLAIMING_PERIOD) revert ClaimingPeriodTooShort();
+    ) external initializer {
+        if (claimExpirationTimestamp_ - vestingEndTimestamp_ < MIN_CLAIMING_PERIOD) {
+            revert ClaimingPeriodTooShort();
+        }
 
-        nounsToken = nounsToken_;
         sender = sender_;
         recipient = recipient_;
         vestingEndTimestamp = vestingEndTimestamp_;
@@ -94,8 +97,14 @@ contract NounVesting is IERC721Receiver {
         acceptingNFTs = true;
 
         if (delegate_ != address(0)) {
-            nounsToken_.delegate(delegate_);
+            nounsToken.delegate(delegate_);
         }
+    }
+
+    constructor(NounsTokenMinimal nounsToken_) {
+        nounsToken = nounsToken_;
+
+        _disableInitializers();
     }
 
     /**
@@ -104,12 +113,10 @@ contract NounVesting is IERC721Receiver {
      * ░░░░░░░░░░░░░░░░░░░░░░░░░░░░░
      */
 
-    function onERC721Received(
-        address operator,
-        address from,
-        uint256 tokenId,
-        bytes calldata data
-    ) external returns (bytes4) {
+    function onERC721Received(address operator, address from, uint256 tokenId, bytes calldata data)
+        external
+        returns (bytes4)
+    {
         if (!acceptingNFTs) revert NotAcceptingNFTs();
         if (msg.sender != address(nounsToken)) revert OnlyNounsToken();
 
@@ -127,7 +134,8 @@ contract NounVesting is IERC721Receiver {
         nounsToken.delegate(to);
     }
 
-    /***
+    /**
+     *
      * @dev Not allowing recipient to select specific tokenIds to buy because it complicates the code a lot.
      * No need to protect from repeat buys because after the first buy all the tokens are transferred.
      */
@@ -147,7 +155,7 @@ contract NounVesting is IERC721Receiver {
 
         address ethRecipient_ = ethRecipient;
         uint256 value = address(this).balance;
-        (bool sent, ) = ethRecipient_.call{ value: value }('');
+        (bool sent,) = ethRecipient_.call{ value: value }("");
 
         emit NounsBought(transferTo, receivedNFTs_, msg.value, ethRecipient_, sent);
     }
@@ -158,14 +166,15 @@ contract NounVesting is IERC721Receiver {
      * ░░░░░░░░░░░░░░░░░░░░░░░░░░░░░
      */
 
-    /***
+    /**
+     *
      * @dev A safety function in case the ETH auto sending fails.
      */
     function withdrawETH(address to) external {
         if (msg.sender != sender) revert OnlySender();
 
         uint256 value = address(this).balance;
-        (bool sent, ) = to.call{ value: value }('');
+        (bool sent,) = to.call{ value: value }("");
 
         emit ETHWithdrawn(to, value, sent);
     }
