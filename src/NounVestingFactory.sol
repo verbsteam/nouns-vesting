@@ -8,6 +8,8 @@ import { NounVesting } from "./NounVesting.sol";
 contract NounVestingFactory {
     using Clones for address;
 
+    error UnexpectedVestingAddress();
+
     event VestingCreated(
         address indexed msgSender,
         address indexed sender,
@@ -33,7 +35,8 @@ contract NounVestingFactory {
         uint256 claimExpirationTimestamp,
         uint256 pricePerToken,
         address ethRecipient,
-        address delegate
+        address delegate,
+        address predictedAddress
     ) external returns (address) {
         address instance = implementation.cloneDeterministic(
             salt(
@@ -47,6 +50,8 @@ contract NounVestingFactory {
                 delegate
             )
         );
+
+        if (instance != predictedAddress) revert UnexpectedVestingAddress();
 
         NounVesting nv = NounVesting(instance);
         nv.initialize(
@@ -66,6 +71,31 @@ contract NounVestingFactory {
         );
 
         return instance;
+    }
+
+    function predictAddress(
+        address msgSender,
+        address sender,
+        address recipient,
+        uint256 vestingEndTimestamp,
+        uint256 claimExpirationTimestamp,
+        uint256 pricePerToken,
+        address ethRecipient,
+        address delegate
+    ) public view {
+        implementation.predictDeterministicAddress(
+            salt(
+                msgSender,
+                sender,
+                recipient,
+                vestingEndTimestamp,
+                claimExpirationTimestamp,
+                pricePerToken,
+                ethRecipient,
+                delegate
+            ),
+            address(this)
+        );
     }
 
     function salt(
