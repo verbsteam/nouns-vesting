@@ -15,7 +15,6 @@ contract NounVestingFactory {
         address indexed sender,
         address indexed recipient,
         uint256 vestingEndTimestamp,
-        uint256 claimExpirationTimestamp,
         uint256 pricePerToken,
         address ethRecipient,
         address delegate,
@@ -32,42 +31,22 @@ contract NounVestingFactory {
         address sender,
         address recipient,
         uint256 vestingEndTimestamp,
-        uint256 claimExpirationTimestamp,
         uint256 pricePerToken,
         address ethRecipient,
         address delegate,
         address predictedAddress
     ) external returns (address) {
         address instance = implementation.cloneDeterministic(
-            salt(
-                msg.sender,
-                sender,
-                recipient,
-                vestingEndTimestamp,
-                claimExpirationTimestamp,
-                pricePerToken,
-                ethRecipient,
-                delegate
-            )
+            salt(msg.sender, sender, recipient, vestingEndTimestamp, pricePerToken, ethRecipient, delegate)
         );
 
         if (instance != predictedAddress) revert UnexpectedVestingAddress();
 
         NounVesting nv = NounVesting(instance);
-        nv.initialize(
-            sender, recipient, vestingEndTimestamp, claimExpirationTimestamp, pricePerToken, ethRecipient, delegate
-        );
+        nv.initialize(sender, recipient, vestingEndTimestamp, pricePerToken, ethRecipient, delegate);
 
         emit VestingCreated(
-            msg.sender,
-            sender,
-            recipient,
-            vestingEndTimestamp,
-            claimExpirationTimestamp,
-            pricePerToken,
-            ethRecipient,
-            delegate,
-            instance
+            msg.sender, sender, recipient, vestingEndTimestamp, pricePerToken, ethRecipient, delegate, instance
         );
 
         return instance;
@@ -78,22 +57,12 @@ contract NounVestingFactory {
         address sender,
         address recipient,
         uint256 vestingEndTimestamp,
-        uint256 claimExpirationTimestamp,
         uint256 pricePerToken,
         address ethRecipient,
         address delegate
     ) public view {
         implementation.predictDeterministicAddress(
-            salt(
-                msgSender,
-                sender,
-                recipient,
-                vestingEndTimestamp,
-                claimExpirationTimestamp,
-                pricePerToken,
-                ethRecipient,
-                delegate
-            ),
+            salt(msgSender, sender, recipient, vestingEndTimestamp, pricePerToken, ethRecipient, delegate),
             address(this)
         );
     }
@@ -103,22 +72,12 @@ contract NounVestingFactory {
         address sender,
         address recipient,
         uint256 vestingEndTimestamp,
-        uint256 claimExpirationTimestamp,
         uint256 pricePerToken,
         address ethRecipient,
         address delegate
     ) internal pure returns (bytes32) {
         return keccak256(
-            abi.encodePacked(
-                msgSender,
-                sender,
-                recipient,
-                vestingEndTimestamp,
-                claimExpirationTimestamp,
-                pricePerToken,
-                ethRecipient,
-                delegate
-            )
+            abi.encodePacked(msgSender, sender, recipient, vestingEndTimestamp, pricePerToken, ethRecipient, delegate)
         );
     }
 }
