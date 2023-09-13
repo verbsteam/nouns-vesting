@@ -12,3 +12,4 @@ Recipient can:
 
 - Delegate the Nouns held in this contract to any Ethereum address they like, as soon as they are sent to this contract.
 - Buy the tokens held in this contract, at the price per token set by the sender, once vesting is over.
+- Receive an NFT that represents their role in the vesting contract, allowing them to transfer it among their wallets, or to anyone else.
