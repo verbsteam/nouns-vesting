@@ -4,8 +4,10 @@ pragma solidity ^0.8.19;
 
 import { Clones } from "openzeppelin-contracts/proxy/Clones.sol";
 import { NounVesting } from "./NounVesting.sol";
+import { OwnableUpgradeable } from "openzeppelin-contracts-upgradeable/access/OwnableUpgradeable.sol";
+import { UUPSUpgradeable } from "openzeppelin-contracts/proxy/utils/UUPSUpgradeable.sol";
 
-contract NounVestingFactory {
+contract NounVestingFactory is OwnableUpgradeable, UUPSUpgradeable {
     using Clones for address;
 
     error UnexpectedVestingAddress();
@@ -80,4 +82,10 @@ contract NounVestingFactory {
             abi.encodePacked(msgSender, sender, recipient, vestingEndTimestamp, pricePerToken, ethRecipient, delegate)
         );
     }
+
+    /**
+     * @dev Reverts when `msg.sender` is not the owner of this contract; in the case of Noun DAOs it should be the
+     * DAO's treasury contract.
+     */
+    function _authorizeUpgrade(address) internal view override onlyOwner { }
 }
