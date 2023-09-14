@@ -17,12 +17,12 @@ contract NounVesting is IERC721Receiver, Initializable {
      * ░░░░░░░░░░░░░░░░░░░░░░░░░░░░░
      */
 
-    error OnlySenderOrRecipient();
     error OnlyRecipient();
     error OnlySender();
     error InsufficientETH();
     error VestingNotDone();
     error TokensBelongToRecipientNow();
+    error OnlyPendingRecipient();
 
     /**
      * ░░░░░░░░░░░░░░░░░░░░░░░░░░░░░
@@ -40,7 +40,8 @@ contract NounVesting is IERC721Receiver, Initializable {
         bool ethSentToRecipient
     );
     event ETHWithdrawn(address to, uint256 amount, bool sent);
-    event StoppedAcceptingNFTs();
+    event PendingRecipientSet(address pendingRecipient);
+    event RecipientSet(address oldRecipient, address newRecipient);
 
     /**
      * ░░░░░░░░░░░░░░░░░░░░░░░░░░░░░
@@ -54,13 +55,7 @@ contract NounVesting is IERC721Receiver, Initializable {
     uint256 public vestingEndTimestamp;
     uint256 public pricePerToken;
     address public ethRecipient;
-
-    modifier onlySenderOrRecipient() {
-        if (msg.sender != sender && msg.sender != recipient) {
-            revert OnlySenderOrRecipient();
-        }
-        _;
-    }
+    address public pendingRecipient;
 
     function initialize(
         address sender_,
@@ -108,6 +103,12 @@ contract NounVesting is IERC721Receiver, Initializable {
     }
 
     /**
+     * ░░░░░░░░░░░░░░░░░░░░░░░░░░░░░
+     *   RECIPIENT FUNCTIONS
+     * ░░░░░░░░░░░░░░░░░░░░░░░░░░░░░
+     */
+
+    /**
      *
      * @dev Not allowing recipient to select specific tokenIds to buy because it complicates the code a lot.
      * No need to protect from repeat buys because after the first buy all the tokens are transferred.
@@ -132,9 +133,29 @@ contract NounVesting is IERC721Receiver, Initializable {
         emit NFTsBought(transferTo, nft, tokenIds, msg.value, ethRecipient_, sent);
     }
 
+    function setPendingRecipient(address pendingRecipient_) external {
+        if (msg.sender != recipient) revert OnlyRecipient();
+
+        pendingRecipient = pendingRecipient_;
+
+        emit PendingRecipientSet(pendingRecipient_);
+    }
+
+    function acceptRecipient() external {
+        address oldRecipient = recipient;
+        address newRecipient = pendingRecipient;
+
+        if (msg.sender != newRecipient) revert OnlyPendingRecipient();
+
+        recipient = newRecipient;
+        pendingRecipient = address(0);
+
+        emit RecipientSet(oldRecipient, newRecipient);
+    }
+
     /**
      * ░░░░░░░░░░░░░░░░░░░░░░░░░░░░░
-     *   ADMIN FUNCTIONS
+     *   SENDER FUNCTIONS
      * ░░░░░░░░░░░░░░░░░░░░░░░░░░░░░
      */
 
