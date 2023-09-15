@@ -4,14 +4,13 @@ pragma solidity ^0.8.19;
 
 import { IERC721Receiver } from "openzeppelin-contracts/interfaces/IERC721Receiver.sol";
 import { IERC721 } from "openzeppelin-contracts/interfaces/IERC721.sol";
-import { OwnableUpgradeable } from "openzeppelin-contracts-upgradeable/access/OwnableUpgradeable.sol";
-import { UUPSUpgradeable } from "openzeppelin-contracts/proxy/utils/UUPSUpgradeable.sol";
+import { Initializable } from "openzeppelin-contracts-upgradeable/proxy/utils/Initializable.sol";
 
 interface NounsTokenMinimal {
     function delegate(address delegatee) external;
 }
 
-contract NounVesting is IERC721Receiver, OwnableUpgradeable, UUPSUpgradeable {
+contract NounVesting is IERC721Receiver, Initializable {
     /**
      * ░░░░░░░░░░░░░░░░░░░░░░░░░░░░░
      *   ERRORS
@@ -50,7 +49,7 @@ contract NounVesting is IERC721Receiver, OwnableUpgradeable, UUPSUpgradeable {
      * ░░░░░░░░░░░░░░░░░░░░░░░░░░░░░
      */
 
-    NounsTokenMinimal public nounsToken;
+    NounsTokenMinimal public immutable nounsToken;
     address public sender;
     address public recipient;
     uint256 public vestingEndTimestamp;
@@ -77,8 +76,7 @@ contract NounVesting is IERC721Receiver, OwnableUpgradeable, UUPSUpgradeable {
         }
     }
 
-    constructor(address owner_, NounsTokenMinimal nounsToken_) {
-        _transferOwnership(owner_);
+    constructor(NounsTokenMinimal nounsToken_) {
         nounsToken = nounsToken_;
 
         _disableInitializers();
@@ -182,10 +180,4 @@ contract NounVesting is IERC721Receiver, OwnableUpgradeable, UUPSUpgradeable {
 
         emit ETHWithdrawn(to, value, sent);
     }
-
-    /**
-     * @dev Reverts when `msg.sender` is not the owner of this contract; in the case of Noun DAOs it should be the
-     * DAO's treasury contract.
-     */
-    function _authorizeUpgrade(address) internal view override onlyOwner { }
 }
